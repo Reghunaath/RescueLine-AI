@@ -132,6 +132,10 @@ ElevenLabs AI Agent → Twilio → ngrok Backend → MongoDB Atlas
 - **Data Flow:** AI agent → webhook → MongoDB → change stream → dashboard (real-time)
 - **Priority Logic:** P0/P1 calls route to human agents, P2/P3 go to waitlist
 
+## Screenshots
+![Project Demo](dashboard.jpeg)
+
+
 ## Collaborators
 
 - Reghunaath

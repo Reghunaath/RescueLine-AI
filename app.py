@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+
+from fastapi import FastAPI, Request
 from pymongo import MongoClient
 from datetime import datetime
 import certifi
 
-app = Flask(__name__)
+app = FastAPI()
 
 # MongoDB connection with SSL certificate
 client = MongoClient(
@@ -13,9 +14,10 @@ client = MongoClient(
 db = client['emergency_calls']
 collection = db['calls']
 
-@app.route('/', methods=['POST'])
-def webhook():
-    data = request.get_json()
+@app.post('/')
+
+async def webhook(request: Request):
+    data = await request.json()
     
     # Extract the important info
     analysis = data['data']['analysis']
@@ -31,7 +33,8 @@ def webhook():
         'location': analysis['data_collection_results'].get('LOCATION', {}).get('value', 'Unknown'),
         'timestamp': datetime.now(),
         'caller_number': metadata.get('phone_call', {}).get('external_number', 'Unknown'),
-        'call_duration': metadata.get('call_duration_secs', 0)
+        'call_duration': metadata.get('call_duration_secs', 0),
+        'is_connected': False,
     }
     
     # Save to MongoDB
@@ -39,7 +42,25 @@ def webhook():
     print(f"✅ Saved to MongoDB with ID: {result.inserted_id}")
     print(f"Priority: {call_data['priority']}")
     
-    return jsonify({'status': 'received'}), 200
+    return {'status': 'received'}
+
+@app.get('/calls')
+async def get_all_calls():
+    """Get all emergency calls from the database"""
+    calls = list(collection.find().sort('timestamp', -1))  # Sort by newest first
+    print(calls)
+    # Convert ObjectId to string for JSON serialization
+    for call in calls:
+        call['_id'] = str(call['_id'])
+        # Convert datetime to ISO format string
+        if 'timestamp' in call:
+            call['timestamp'] = call['timestamp'].isoformat()
+    
+    return {
+        'total': len(calls),
+        'calls': calls
+    }
 
 if __name__ == '__main__':
-    app.run(port=5001)
+    import uvicorn
+    uvicorn.run(app, port=5001)
